@@ -38,7 +38,7 @@ bot.hears('Menu', (ctx: Context) => {
 
 // Support
 bot.hears('Support', (ctx: Context) => {
-  ctx.reply('Contact @CryptoSupportAdmin or support@cryptoclass.com.');
+  ctx.reply('Contact @Auspicious14 or uthmanabdulganiyu2019@gmail.com.');
 });
 
 // Enquiry (conversational)
