@@ -10,7 +10,7 @@ interface CustomContext extends Context<Update> {
 }
 
 const PRICES: Record<string, number> = {
-  monthly: 20,
+  monthly: 3,
   lifetime: 100
 };
 
@@ -65,7 +65,7 @@ bot.hears('Subscription', async (ctx: Context) => {
   }
 
   ctx.reply('Choose subscription type:', Markup.inlineKeyboard([
-      Markup.button.callback('Monthly ($20/mo)', 'sub_monthly'),
+      Markup.button.callback('Monthly ($3/mo)', 'sub_monthly'),
       Markup.button.callback('Lifetime ($100)', 'sub_lifetime')
     ])
   );
@@ -85,15 +85,45 @@ bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
   try {
     const type = ctx.match?.[1] as string;
     trackEvent('Subscription Type Selected', { userId: ctx.from?.id, type });
+    
+    await ctx.answerCbQuery('Creating payment...');
+    
+    // Direct to USDT payment
+    const { invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
+    
+    await ctx.reply(
+      `💰 ${type === 'monthly' ? 'Monthly' : 'Lifetime'} Subscription\n` +
+      `Price: $${PRICES[type]}\n\n` +
+      `🪙 Pay with USDT (TRC20)\n` +
+      `Payment Link: ${invoiceUrl}\n\n` +
+      `✅ After payment confirmation, you'll receive:\n` +
+      `• Instant notification\n` +
+      `• Private invite link to premium group\n` +
+      `• Link valid for ONE person only\n\n` +
+      `⏱️ Payment expires in 30 minutes`,
+      Markup.inlineKeyboard([
+        Markup.button.url('💳 Pay Now', invoiceUrl)
+      ])
+    );
+  } catch (error: any) {
+    console.error('Payment creation error:', error);
+    await ctx.reply('❌ Failed to create payment. Please try again or contact support.');
+  }
+});
+
+/* bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
+  try {
+    const type = ctx.match?.[1] as string;
+    trackEvent('Subscription Type Selected', { userId: ctx.from?.id, type });
 
     await ctx.answerCbQuery();
     
     await ctx.reply(
       `You selected: ${type === 'monthly' ? 'Monthly' : 'Lifetime'} subscription\n` +
-      `Price: $${PRICES[type]}\n\n` +
-      `Choose your payment method:`,
+      `Price: $${PRICES[type]}\n\n`,
+     // `Choose your payment method:`,
       Markup.inlineKeyboard([
-        [Markup.button.callback('💳 Card Payment', `pay_card_${type}`)],
+        //[Markup.button.callback('💳 Card Payment', `pay_card_${type}`)],
         [Markup.button.callback('🪙 USDT (Crypto)', `pay_usdt_${type}`)]
       ])
     );
@@ -102,15 +132,17 @@ bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
     await ctx.reply('An error occurred. Please try again.');
   }
 });
+*/
 
-bot.action(/pay_card_(monthly|lifetime)/, async (ctx: CustomContext) => {
+/*bot.action(/pay_card_(monthly|lifetime)/, async (ctx: CustomContext) => {
   const type = ctx.match?.[1] as string;
   const url = await createPaystackTransaction(ctx.from?.id as number, type);
   ctx.reply(`Complete card payment: ${url}`);
   await ctx.answerCbQuery();
 });
+*/
 
-bot.action(/pay_usdt_(monthly|lifetime)/, async (ctx: CustomContext) => {
+/*bot.action(/pay_usdt_(monthly|lifetime)/, async (ctx: CustomContext) => {
   try {
     const type = ctx.match?.[1] as string;
     await ctx.answerCbQuery('Creating payment...');
@@ -131,21 +163,71 @@ bot.action(/pay_usdt_(monthly|lifetime)/, async (ctx: CustomContext) => {
     await ctx.reply('❌ An error occurred creating your payment. Please try again or contact support.');
   }
 });
+*/
 
 // Function to send invite link or add to group
 async function sendInviteLink(ctx: Context, userId: number): Promise<void> {
   try {
-    const invite = await bot.telegram.createChatInviteLink(Number(process.env.PREMIUM_GROUP_ID), {
-      member_limit: 1,
-      creates_join_request: false,
-    });
-    ctx.reply(`Subscription active! Join premium group: ${invite.invite_link}`);
+    // Create single-use invite link (member_limit: 1)
+    const invite = await bot.telegram.createChatInviteLink(
+      Number(process.env.PREMIUM_GROUP_ID),
+      {
+        member_limit: 1,              // ONLY 1 person can use this link
+        creates_join_request: false,  // Auto-approve
+        name: `User-${userId}`,       // Track who got this link
+      }
+    );
+    
+    await ctx.reply(
+      `🎉 Payment Confirmed!\n\n` +
+      `✅ Your subscription is now active\n` +
+      `🔐 Here's your exclusive invite link:\n\n` +
+      `${invite.invite_link}\n\n` +
+      `⚠️ IMPORTANT:\n` +
+      `• This link works for ONE person only\n` +
+      `• It will expire after you join\n` +
+      `• Do NOT share with others\n\n` +
+      `Welcome to the premium group! 🚀`
+    );
+    
     trackEvent('Invite Sent', { userId });
   } catch (err) {
     console.error('Invite error:', err);
-    ctx.reply('Error generating invite. Contact support.');
+    ctx.reply('Error generating invite. Contact support: @Auspicious14');
   }
 }
+
+// Export function to send invite from webhook
+export async function sendInviteLinkToUser(userId: number): Promise<void> {
+  try {
+    const invite = await bot.telegram.createChatInviteLink(
+      Number(process.env.PREMIUM_GROUP_ID),
+      {
+        member_limit: 1,
+        creates_join_request: false,
+        name: `User-${userId}`,
+      }
+    );
+    
+    await bot.telegram.sendMessage(
+      userId,
+      `🎉 Payment Confirmed!\n\n` +
+      `✅ Your subscription is now active\n` +
+      `🔐 Here's your exclusive invite link:\n\n` +
+      `${invite.invite_link}\n\n` +
+      `⚠️ IMPORTANT:\n` +
+      `• This link works for ONE person only\n` +
+      `• It will expire after you join\n` +
+      `• Do NOT share with others\n\n` +
+      `Welcome to the premium group! 🚀`
+    );
+    
+    trackEvent('Invite Sent After Payment', { userId });
+  } catch (err) {
+    console.error('Error sending invite to user:', err);
+  }
+}
+
 
 // Error handling for bot
 bot.catch((err: any, ctx: Context) => {
