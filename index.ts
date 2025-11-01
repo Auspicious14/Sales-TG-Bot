@@ -21,12 +21,14 @@ connectDB();
 app.use('/webhook', bot.webhookCallback('/'));
 app.use('/api', routes);
 
-app.get('/', (req: Request, res: Response) => res.send('Bot running!'));
+app.get('/', (req: Request, res: Response) => res.send('Bot is running!'));
 
 bot.telegram.setWebhook(`${process.env.VERCEL_URL}/webhook`)
   .then(() => console.log('Webhook set'))
   .catch((err: any) => console.error('Webhook error:', err));
 
-app.listen(port, () => {
+/*app.listen(port, () => {
   console.log(`Server on port ${port}`);
-});
+});*/
+
+export default app;
