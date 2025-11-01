@@ -5,31 +5,55 @@ import { trackEvent } from '../utils/analytics';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
-  monthly: 1,
+  monthly: 20,
   lifetime: 100
 };
 
 // Create Paystack transaction initialization for card payment
 async function createPaystackTransaction(userId: number, type: string): Promise<string> {
-  const amount = PRICES[type] * 100;
   try {
-    const response = await axios.post('https://api.paystack.co/transaction/initialize', {
-      email: `uthmanabdulganiyu2019@gmail.com`,
-      amount,
-      currency: process.env.PAYMENT_CURRENCY || 'USD',
-      metadata: { userId, type },
-      callback_url: `${process.env.VERCEL_URL}/payment-success?userId=${userId}&type=${type}`,
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
+    // Paystack primarily supports NGN, convert USD to NGN (approximate rate)
+    const currency = process.env.PAYMENT_CURRENCY || 'NGN';
+    let amount = PRICES[type] * 100; // Convert to kobo/cents
+    
+    // If using NGN, convert from USD (1 USD ≈ 1,600 NGN as of 2024)
+    if (currency === 'NGN') {
+      amount = PRICES[type] * 1550 * 100; // USD to NGN, then to kobo
+    }
+
+    const response = await axios.post(
+      'https://api.paystack.co/transaction/initialize',
+      {
+        email: 'uthmanabdulganiyu2019@gmail.com',
+        amount: Math.round(amount), // Must be integer
+        currency: currency,
+        callback_url: `${process.env.VERCEL_URL}/api/payment-success?userId=${userId}&type=${type}`,
+        metadata: {
+          userId,
+          type,
+          timestamp: Date.now()
+        },
+        reference: `${userId}-${type}-${Date.now()}`, // Unique reference
       },
-    });
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('Paystack response:', response.data);
     trackEvent('Paystack Transaction Initialized', { userId, type });
+    
     return response.data.data.authorization_url;
-  } catch (err) {
-    console.error('Paystack error:', err);
-    throw err;
+  } catch (err: any) {
+    console.error('Paystack error details:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    });
+    throw new Error(err.response?.data?.message || 'Failed to create card payment. Please try again.');
   }
 }
 
