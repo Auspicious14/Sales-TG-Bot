@@ -78,20 +78,25 @@ bot.on('text', async (ctx: Context) => {
 });
 
 bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
-  const type = ctx.match?.[1] as string;
-  trackEvent('Subscription Type Selected', { userId: ctx.from?.id, type });
+  try {
+    const type = ctx.match?.[1] as string;
+    trackEvent('Subscription Type Selected', { userId: ctx.from?.id, type });
 
-  if (type === 'lifetime') {
-    const url = await createPaystackTransaction(ctx.from?.id as number, type);
-    ctx.reply(`Pay with card: ${url}`);
-  } else {
-    ctx.reply('Pay with:', Markup.inlineKeyboard([
-        Markup.button.callback('Card', `pay_card_${type}`),
-        Markup.button.callback('USDT', `pay_usdt_${type}`)
+    await ctx.answerCbQuery();
+    
+    await ctx.reply(
+      `You selected: ${type === 'monthly' ? 'Monthly' : 'Lifetime'} subscription\n` +
+      `Price: $${PRICES[type]}\n\n` +
+      `Choose your payment method:`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('💳 Card Payment', `pay_card_${type}`)],
+        [Markup.button.callback('🪙 USDT (Crypto)', `pay_usdt_${type}`)]
       ])
     );
+  } catch (error) {
+    console.error('Subscription selection error:', error);
+    await ctx.reply('An error occurred. Please try again.');
   }
-  await ctx.answerCbQuery();
 });
 
 bot.action(/pay_card_(monthly|lifetime)/, async (ctx: CustomContext) => {
@@ -102,10 +107,25 @@ bot.action(/pay_card_(monthly|lifetime)/, async (ctx: CustomContext) => {
 });
 
 bot.action(/pay_usdt_(monthly|lifetime)/, async (ctx: CustomContext) => {
-  const type = ctx.match?.[1] as string;
-  const { address, amount, invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
-  ctx.reply(`Send ${amount} USDT to: ${address}\nInvoice: ${invoiceUrl}\nWe'll verify automatically.`);
-  await ctx.answerCbQuery();
+  try {
+    const type = ctx.match?.[1] as string;
+    await ctx.answerCbQuery('Creating payment...');
+    
+    const { invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
+    
+    await ctx.reply(
+      `💳 Complete your USDT payment:\n\n` +
+      `Amount: $${PRICES[type]}\n` +
+      `Payment Link: ${invoiceUrl}\n\n` +
+      `✅ You'll be notified automatically once payment is confirmed.`,
+      Markup.inlineKeyboard([
+        Markup.button.url('Pay Now', invoiceUrl)
+      ])
+    );
+  } catch (error: any) {
+    console.error('USDT payment error:', error);
+    await ctx.reply('❌ An error occurred creating your payment. Please try again or contact support.');
+  }
 });
 
 // Function to send invite link or add to group
