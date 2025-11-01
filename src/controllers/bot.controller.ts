@@ -9,6 +9,10 @@ interface CustomContext extends Context<Update> {
   match?: RegExpExecArray;
 }
 
+const PRICES: Record<string, number> = {
+  monthly: 20,
+  lifetime: 100
+};
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN as string);
 
