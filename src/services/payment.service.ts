@@ -5,7 +5,7 @@ import { trackEvent } from '../utils/analytics';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
-  monthly: 20,
+  monthly: 1,
   lifetime: 100
 };
 
@@ -14,7 +14,7 @@ async function createPaystackTransaction(userId: number, type: string): Promise<
   const amount = PRICES[type] * 100;
   try {
     const response = await axios.post('https://api.paystack.co/transaction/initialize', {
-      email: `user${userId}@example.com`,
+      email: `uthmanabdulganiyu2019@gmail.com`,
       amount,
       currency: process.env.PAYMENT_CURRENCY || 'USD',
       metadata: { userId, type },
