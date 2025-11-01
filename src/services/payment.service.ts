@@ -5,7 +5,7 @@ import { trackEvent } from '../utils/analytics';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
-  monthly: 20,
+  monthly: 3,
   lifetime: 100
 };
 
