@@ -46,16 +46,6 @@ bot.hears('Enquiry', (ctx: Context) => {
   ctx.reply("What's your enquiry? Type your question.");
 });
 
-bot.on('text', async (ctx: Context) => {
-    if (ctx.message && 'text' in ctx.message) {
-        const text = ctx.message.text;
-        if (!['Menu', 'Support', 'Enquiry', 'Subscription', 'FAQ'].includes(text)) {
-            trackEvent('Enquiry Received', { userId: ctx.from?.id, query: text });
-            ctx.reply(`Thanks for: "${text}". We'll review and DM you.`);
-        }
-    }
-});
-
 // FAQ
 bot.hears('FAQ', (ctx: Context) => {
   ctx.reply('FAQs:\n1. What is the class about? Crypto trading basics.\n2. Refund policy? No refunds.\n3. How to pay? Card or USDT.');
@@ -74,6 +64,16 @@ bot.hears('Subscription', async (ctx: Context) => {
       Markup.button.callback('Lifetime ($100)', 'sub_lifetime')
     ])
   );
+});
+
+bot.on('text', async (ctx: Context) => {
+    if (ctx.message && 'text' in ctx.message) {
+        const text = ctx.message.text;
+        if (!['Menu', 'Support', 'Enquiry', 'Subscription', 'FAQ'].includes(text)) {
+            trackEvent('Enquiry Received', { userId: ctx.from?.id, query: text });
+            ctx.reply(`Thanks for: "${text}". We'll review and DM you.`);
+        }
+    }
 });
 
 bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
