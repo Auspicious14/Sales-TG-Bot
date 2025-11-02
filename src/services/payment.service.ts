@@ -92,7 +92,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
       price_amount: basePrice,
       price_currency: 'usd',
       pay_currency: 'usdtspl',
-      pay_amount: payAmount,
+     // pay_amount: payAmount,
       ipn_callback_url: `${process.env.VERCEL_URL}/api/usdt-webhook`,
       order_id: `${userId}-${type}`,
       //order_description: 'Crypto Class Subscription',
