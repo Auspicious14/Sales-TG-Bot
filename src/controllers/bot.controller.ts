@@ -10,7 +10,7 @@ interface CustomContext extends Context<Update> {
 }
 
 const PRICES: Record<string, number> = {
-  monthly: 3,
+  monthly: 20,
   lifetime: 100
 };
 
@@ -65,7 +65,7 @@ bot.hears('Subscription', async (ctx: Context) => {
   }
 
   ctx.reply('Choose subscription type:', Markup.inlineKeyboard([
-      Markup.button.callback('Monthly ($3/mo)', 'sub_monthly'),
+      Markup.button.callback('Monthly ($20/mo)', 'sub_monthly'),
       Markup.button.callback('Lifetime ($100)', 'sub_lifetime')
     ])
   );
