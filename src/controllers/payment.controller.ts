@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { handlePaystackWebhook, handleUSDTWebhook } from '../services/payment.service';
+import { handlePaystackWebhook, usdtWebhook as handleUSDTWebhook } from '../services/payment.service';
 
 export const paystackWebhook = async (req: Request, res: Response) => {
   try {
