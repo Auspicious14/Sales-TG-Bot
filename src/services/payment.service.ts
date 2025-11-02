@@ -2,7 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { User } from '../models/user.model';
 import { trackEvent } from '../utils/analytics';
-import { sendInviteLinkToUser } from '../controllers/bot.controller';
+import { sendInviteLinkToUser, notifyUserAboutError } from '../controllers/bot.controller';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
@@ -116,62 +116,46 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
 // Handle USDT webhook from NowPayments
 async function usdtWebhook(req: any): Promise<any> {
   try {
-    // Verify webhook signature
-    const hmac = crypto.createHmac('sha512', process.env.NOWPAYMENTS_IPN_SECRET as string);
-    hmac.update(JSON.stringify(req.body, Object.keys(req.body).sort()));
-    const signature = hmac.digest('hex');
+    const sortedBody = JSON.stringify(req.body, Object.keys(req.body).sort());
+    const signature = crypto
+      .createHmac('sha512', process.env.NOWPAYMENTS_IPN_SECRET!)
+      .update(sortedBody)
+      .digest('hex');
 
     if (signature !== req.headers['x-nowpayments-sig']) {
-      console.error('Invalid IPN signature');
-      throw new Error('Invalid IPN signature');
+      const err = new Error('Invalid IPN signature');
+      console.error(err.message, { received: req.headers['x-nowpayments-sig'], calculated: signature });
+      // ---- Notify the buyer (optional but very helpful) ----
+      await notifyUserAboutError(req.body.order_id, err.message);
+      throw err;
     }
 
-    const paymentStatus = req.body.payment_status;
-    const orderId = req.body.order_id;
+    const { payment_status, order_id, actually_paid, price_amount } = req.body;
 
-    console.log('Webhook received:', {
-      status: paymentStatus,
-      orderId: orderId,
-      amount: req.body.price_amount
-    });
+    console.log('IPN OK →', { payment_status, order_id, actually_paid, price_amount });
 
-    // Only process successful payments
-    if (paymentStatus === 'finished') {
-      // Parse order_id: "userId-type-timestamp"
-      const [userId, type] = orderId.split('-');
-      
-      console.log('Processing successful payment:', { userId, type });
-      
-      // Complete subscription
-      await completeSubscription(Number(userId), type);
-      
-      // Send invite link via Telegram
-      await sendInviteLinkToUser(Number(userId));
-      
-      trackEvent('Subscription Completed', { 
-        userId: Number(userId), 
-        type, 
-        method: 'usdt',
-        amount: req.body.price_amount 
-      });
-      
-      console.log('Subscription completed and invite sent to user:', userId);
-    } else if (paymentStatus === 'failed' || paymentStatus === 'expired') {
-      const [userId] = orderId.split('-');
-      console.log('Payment failed/expired for user:', userId);
-      trackEvent('Payment Failed', { 
-        userId: Number(userId), 
-        status: paymentStatus 
-      });
+    if (payment_status === 'finished') {
+      const [userIdStr, type] = order_id.split('-');
+      const userId = Number(userIdStr);
+
+      await completeSubscription(userId, type);
+      await sendInviteLinkToUser(userId);
+
+      trackEvent('Subscription Completed', { userId, type, method: 'usdt', amount: price_amount });
+    } else if (['failed', 'expired'].includes(payment_status)) {
+      const [userIdStr] = order_id.split('-');
+      await notifyUserAboutError(order_id, `Payment ${payment_status}`);
+      trackEvent('Payment Failed', { userId: Number(userIdStr), status: payment_status });
     }
 
     return req.body;
   } catch (err: any) {
-    console.error('Webhook processing error:', err);
-    throw err;
+    console.error('Webhook error:', err);
+    // make sure the user is not left in limbo
+    if (req.body?.order_id) await notifyUserAboutError(req.body.order_id, err.message);
+    throw err; // let Express return 400
   }
 }
-
 
 // Complete subscription logic
 async function completeSubscription(userId: number, type: string): Promise<void> {
