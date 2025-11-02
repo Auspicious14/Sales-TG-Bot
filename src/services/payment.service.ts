@@ -2,6 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { User } from '../models/user.model';
 import { trackEvent } from '../utils/analytics';
+import { sendInviteLinkToUser } from '../controllers/bot.controller';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
@@ -77,7 +78,7 @@ async function handlePaystackWebhook(req: any): Promise<any> {
 }
 
 // Create USDT payment via NowPayments
-async function createUSDTPayment(userId: number, type: string): Promise<{ address: string; amount: number; invoiceUrl: string; paymentId: string }> {
+async function createUSDTPayment(userId: number, type: string): Promise<{ invoiceUrl: string; paymentId: string }> {
   try {
     const response = await axios.post('https://api.nowpayments.io/v1/invoice', {
       price_amount: PRICES[type],
@@ -85,7 +86,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ addres
       pay_currency: 'usdttrc20',
       ipn_callback_url: `${process.env.VERCEL_URL}/api/usdt-webhook`,
       order_id: `${userId}-${type}`,
-      order_description: 'Crypto Class Subscription',
+      //order_description: 'Crypto Class Subscription',
       cancel_url: `https://t.me/${process.env.BOT_USERNAME}`,
       order_description: `Crypto Class - ${type} subscription`,
     }, {
@@ -179,5 +180,5 @@ export {
   createPaystackTransaction,
   handlePaystackWebhook,
   createUSDTPayment,
-  handleUSDTWebhook,
+  usdtWebhook,
 };
