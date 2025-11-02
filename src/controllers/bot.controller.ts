@@ -111,6 +111,7 @@ bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
   }
 });
 
+
 /* bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
   try {
     const type = ctx.match?.[1] as string;
@@ -226,6 +227,16 @@ export async function sendInviteLinkToUser(userId: number): Promise<void> {
   } catch (err) {
     console.error('Error sending invite to user:', err);
   }
+}
+
+export async function notifyUserAboutError(orderId: string, reason: string) {
+  try {
+    const [userId] = orderId.split('-');
+    await bot.telegram.sendMessage(
+      Number(userId),
+      `Warning: Payment issue – ${reason}\nPlease try again or contact support.`
+    );
+  } catch { /* ignore – user may have blocked the bot */ }
 }
 
 
