@@ -104,7 +104,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ invoic
 }
 
 // Handle USDT webhook from NowPayments
-export async function usdtWebhook(req: any): Promise<any> {
+async function usdtWebhook(req: any): Promise<any> {
   try {
     // Verify webhook signature
     const hmac = crypto.createHmac('sha512', process.env.NOWPAYMENTS_IPN_SECRET as string);
