@@ -6,7 +6,7 @@ import { sendInviteLinkToUser } from '../controllers/bot.controller';
 
 // Prices (in USD)
 const PRICES: Record<string, number> = {
-  monthly: 3,
+  monthly: 20,
   lifetime: 100
 };
 
@@ -91,7 +91,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
     const response = await axios.post('https://api.nowpayments.io/v1/invoice', {
       price_amount: basePrice,
       price_currency: 'usd',
-      pay_currency: 'usdtspl',
+      pay_currency: 'usdttrc20',
      // pay_amount: payAmount,
       ipn_callback_url: `${process.env.VERCEL_URL}/api/usdt-webhook`,
       order_id: `${userId}-${type}`,
