@@ -89,11 +89,11 @@ bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
     await ctx.answerCbQuery('Creating payment...');
     
     // Direct to USDT payment
-    const { invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
+    const { userPays, invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
     
     await ctx.reply(
       `💰 ${type === 'monthly' ? 'Monthly' : 'Lifetime'} Subscription\n` +
-      `Price: $${PRICES[type]}\n\n` +
+      `Price: $${userPays}\n\n` +
       `🪙 Pay with USDT (TRC20)\n` +
       `Payment Link: ${invoiceUrl}\n\n` +
       `✅ After payment confirmation, you'll receive:\n` +
