@@ -78,12 +78,21 @@ async function handlePaystackWebhook(req: any): Promise<any> {
 }
 
 // Create USDT payment via NowPayments
-async function createUSDTPayment(userId: number, type: string): Promise<{ invoiceUrl: string; paymentId: string }> {
+async function createUSDTPayment(userId: number, type: string): Promise<{ userPays: number; invoiceUrl: string; paymentId: string }> {
+  const basePrice = PRICES[type]; 
+  const feeRate = 0.005; 
+  const networkFeeBuffer = 0.01;
+
+  const userPays = basePrice * (1 + feeRate) + networkFeeBuffer;
+
+  // Round to 2 decimals (USDT precision)
+  const payAmount = Math.round(userPays * 100) / 100;
   try {
     const response = await axios.post('https://api.nowpayments.io/v1/invoice', {
-      price_amount: PRICES[type],
+      price_amount: basePrice,
       price_currency: 'usd',
-      pay_currency: 'usdttrc20',
+      pay_currency: 'usdtspl',
+      pay_amount: payAmount,
       ipn_callback_url: `${process.env.VERCEL_URL}/api/usdt-webhook`,
       order_id: `${userId}-${type}`,
       //order_description: 'Crypto Class Subscription',
@@ -94,6 +103,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ invoic
     });
     trackEvent('USDT Invoice Created', { userId, type });
     return {
+      userPays: payAmount,
       invoiceUrl: response.data.invoice_url,
       paymentId: response.data.payment_id,
     };
