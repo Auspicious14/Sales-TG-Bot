@@ -116,18 +116,19 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
 // Handle USDT webhook from NowPayments
 async function usdtWebhook(req: any): Promise<any> {
   console.log("IPN Secret", process.env.NOWPAYMENTS_IPN_SECRET!)
-  console.log("signature header", req.headers['x-nowpayments-sig'])
+  
   try {
     const sortedBody = JSON.stringify(req.body, Object.keys(req.body).sort());
     const signature = crypto
       .createHmac('sha512', process.env.NOWPAYMENTS_IPN_SECRET!)
       .update(sortedBody)
       .digest('hex');
-
+    console.log("signature", signature)
+    console.log("signature header", req.headers['x-nowpayments-sig'])
+    console.log("signature match?:", signature === req.headers['x-nowpayments-sig'])
     if (signature !== req.headers['x-nowpayments-sig']) {
       const err = new Error('Invalid IPN signature');
       console.error(err.message, { received: req.headers['x-nowpayments-sig'], calculated: signature });
-      // ---- Notify the buyer (optional but very helpful) ----
       await notifyUserAboutError(req.body.order_id, err.message);
       throw err;
     }
