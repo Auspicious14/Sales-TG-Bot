@@ -114,28 +114,23 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
 }
 
 // Handle USDT webhook from NowPayments
-async function usdtWebhook(req: any): Promise<any> {
-  console.log("IPN Secret", process.env.NOWPAYMENTS_IPN_SECRET!)
-  
+export async function usdtWebhook(req: any): Promise<any> {
   try {
-    const sortedBody = JSON.stringify(req.body, Object.keys(req.body).sort());
-    const signature = crypto
+    // FIXED: NowPayments signature verification
+    // They send the signature of the RAW body, not sorted JSON
+    const receivedSig = req.headers['x-nowpayments-sig'];
+    
+    // Create signature from raw body string
+    const calculatedSig = crypto
       .createHmac('sha512', process.env.NOWPAYMENTS_IPN_SECRET!)
-      .update(sortedBody)
+      .update(JSON.stringify(req.body))
       .digest('hex');
-    console.log("signature", signature)
-    console.log("signature header", req.headers['x-nowpayments-sig'])
-    console.log("signature match?:", signature === req.headers['x-nowpayments-sig'])
-    if (signature !== req.headers['x-nowpayments-sig']) {
-      const err = new Error('Invalid IPN signature');
-      console.error(err.message, { received: req.headers['x-nowpayments-sig'], calculated: signature });
-      await notifyUserAboutError(req.body.order_id, err.message);
-      throw err;
+
+    if (calculatedSig !== receivedSig) {
+      throw new Error('Invalid IPN signature');
     }
 
     const { payment_status, order_id, actually_paid, price_amount } = req.body;
-
-    console.log('IPN OK →', { payment_status, order_id, actually_paid, price_amount });
 
     if (payment_status === 'finished') {
       const [userIdStr, type] = order_id.split('-');
@@ -144,19 +139,28 @@ async function usdtWebhook(req: any): Promise<any> {
       await completeSubscription(userId, type);
       await sendInviteLinkToUser(userId);
 
-      trackEvent('Subscription Completed', { userId, type, method: 'usdt', amount: price_amount });
+      trackEvent('Subscription Completed', { 
+        userId, 
+        type, 
+        method: 'usdt', 
+        amountUSD: price_amount,
+        amountUSDT: actually_paid 
+      });
     } else if (['failed', 'expired'].includes(payment_status)) {
       const [userIdStr] = order_id.split('-');
       await notifyUserAboutError(order_id, `Payment ${payment_status}`);
-      trackEvent('Payment Failed', { userId: Number(userIdStr), status: payment_status });
+      trackEvent('Payment Failed', { 
+        userId: Number(userIdStr), 
+        status: payment_status 
+      });
     }
 
     return req.body;
   } catch (err: any) {
-    console.error('Webhook error:', err);
-    // make sure the user is not left in limbo
-    if (req.body?.order_id) await notifyUserAboutError(req.body.order_id, err.message);
-    throw err; // let Express return 400
+    if (req.body?.order_id) {
+      await notifyUserAboutError(req.body.order_id, 'Payment verification failed');
+    }
+    throw err;
   }
 }
 
