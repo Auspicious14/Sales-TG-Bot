@@ -91,16 +91,20 @@ bot.action(/sub_(monthly|lifetime)/, async (ctx: CustomContext) => {
     // Direct to USDT payment
     const { userPays, invoiceUrl } = await createUSDTPayment(ctx.from?.id as number, type);
     
+    
     await ctx.reply(
-      `💰 ${type === 'monthly' ? 'Monthly' : 'Lifetime'} Subscription\n` +
-      `Price: $${userPays}\n\n` +
-      `🪙 Pay with USDT (TRC20)\n` +
-      `Payment Link: ${invoiceUrl}\n\n` +
-      `✅ After payment confirmation, you'll receive:\n` +
-      `• Instant notification\n` +
-      `• Private invite link to premium group\n` +
-      `• Link valid for ONE person only\n\n` +
-      `⏱️ Payment expires in 30 minutes`,
+      `💰 ${type === 'monthly' ? 'Monthly' : 'Lifetime'} Subscription\n\n` +
+      `💵 Price: $${PRICES[type]} USD\n` +
+      `🪙 Pay with: USDT (TRC20)\n\n` +
+      `📌 IMPORTANT:\n` +
+      `• The exact USDT amount will be shown on the payment page\n` +
+      `• USDT amount may differ slightly from USD due to market rates\n` +
+      `• Invoice valid for 7 days\n` +
+      `• Payment confirmed within minutes after blockchain confirmation\n\n` +
+      `✅ After payment:\n` +
+      `• You'll receive instant notification\n` +
+      `• Private invite link (valid for ONE person only)\n` +
+      `• Immediate access to premium group`,
       Markup.inlineKeyboard([
         Markup.button.url('💳 Pay Now', invoiceUrl)
       ])
