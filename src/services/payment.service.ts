@@ -92,11 +92,10 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
       price_amount: basePrice,
       price_currency: 'usd',
       pay_currency: 'usdttrc20',
-     // pay_amount: payAmount,
       ipn_callback_url: `${process.env.VERCEL_URL}/api/usdt-webhook`,
       order_id: `${userId}-${type}`,
-      //order_description: 'Crypto Class Subscription',
       cancel_url: `https://t.me/${process.env.BOT_USERNAME}`,
+      success_url: `https://t.me/${process.env.BOT_USERNAME}`,
       order_description: `Crypto Class - ${type} subscription`,
     }, {
       headers: { 'x-api-key': process.env.NOWPAYMENTS_API_KEY }
