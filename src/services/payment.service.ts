@@ -114,7 +114,7 @@ async function createUSDTPayment(userId: number, type: string): Promise<{ userPa
 }
 
 // Handle USDT webhook from NowPayments
-export async function usdtWebhook(req: any): Promise<any> {
+async function usdtWebhook(req: any): Promise<any> {
   try {
     // FIXED: NowPayments signature verification
     // They send the signature of the RAW body, not sorted JSON
